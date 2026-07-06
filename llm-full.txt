@@ -1,0 +1,370 @@
+# 3X-UI PHP Client — Full LLM Context
+
+## Project Overview
+
+**alirezax5/threex-ui-php** is a comprehensive, modular PHP 8.1+ client library for the 3X-UI Panel API. The 3X-UI Panel is a web-based management interface for Xray-core, providing GUI control over V2Ray/VLESS/VMess/Trojan/Shadowsocks proxy configurations. This library wraps all ~96 REST API endpoints across 9 functional groups with type-safe, validated, and well-structured PHP code.
+
+### Target Audience
+- Developers automating 3X-UI panel management
+- VPN service providers building custom client portals
+- System administrators needing scriptable panel control
+- AI/LLM agents generating or manipulating panel configurations
+
+---
+
+## Architecture Deep Dive
+
+### Core Classes
+
+#### `ThreeXUI\ThreeXUI` (Main Facade)
+The primary entry point. Constructor accepts a panel URL string. Provides:
+- `withApiToken(string $token): self` — Bearer token auth
+- `login(string $user, string $pass): array` — Session login
+- `logout(): array` — Session logout
+- `isTwoFactorEnabled(): bool` — Check 2FA
+- `setTimeout(int $seconds): self` — Request timeout
+- `withoutSslVerification(): self` — Skip SSL (dev only)
+- Accessor methods for each endpoint group: `inbounds()`, `clients()`, `clientGroups()`, `server()`, `nodes()`, `settings()`, `xrayConfig()`, `customGeo()`, `subscriptions()`
+- `getHttpClient(): HttpClient` — Direct HTTP access
+- `getConfig(): Config` — Configuration access
+
+#### `ThreeXUI\Config`
+Immutable-style configuration with fluent interface:
+- `__construct(string $baseUrl)` — Sets panel URL
+- `useApiToken(string $token): self` — Switch to token mode
+- `useCredentials(string $user, string $pass): self` — Switch to session mode
+- `setTimeout(int $seconds): self`
+- `disableSslVerification(): self`
+- Getters: `getBaseUrl()`, `getApiToken()`, `getUsername()`, `getPassword()`, `getTimeout()`, `isSslVerified()`
+
+#### `ThreeXUI\HttpClient`
+Native cURL HTTP client implementing `HttpClientInterface`:
+- `get(string $path, array $query): array`
+- `post(string $path, array $data): array`
+- `postMultipart(string $path, array $data, array $files): array`
+- `put(string $path, array $data): array`
+- `delete(string $path): array`
+- Automatic: JSON encoding/decoding, header management, cookie extraction
+- Adds `Authorization: Bearer` header when API token is set
+- Adds `Cookie:` header for session-based auth
+- Response handling: parses 3X-UI JSON envelope, throws exceptions on errors
+
+#### `ThreeXUI\Authentication`
+Handles the authentication lifecycle:
+- `login(): array` — POST /login, captures session cookie
+- `logout(): array` — POST /logout, clears session
+- `getCsrfToken(): ?string` — Returns stored CSRF token
+- `isTwoFactorEnabled(): bool` — POST /getTwoFactorEnable
+- Auto-fetches CSRF token after successful login
+
+### Endpoint Classes
+
+All endpoint classes implement `EndpointInterface` and receive `HttpClient` via constructor. Each class maps to one API path prefix and contains methods for all related endpoints.
+
+#### `Endpoints\Inbounds` (prefix: `/panel/api/inbounds`)
+Full inbound management:
+- `list()` — GET /list — full list with clientStats
+- `listSlim()` — GET /list/slim — stripped (email + enable)
+- `options()` — GET /options — picker data
+- `get(int $id)` — GET /get/:id
+- `add(array $data)` — POST /add — validates remark, port, protocol, settings required
+- `delete(int $id)` — POST /del/:id
+- `update(int $id, array $data)` — POST /update/:id
+- `setEnable(int $id, bool $enable)` — POST /setEnable/:id
+- `resetTraffic(int $id)` — POST /:id/resetTraffic
+- `delAllClients(int $id)` — POST /:id/delAllClients
+- `getFallbacks(int $id)` — GET /:id/fallbacks
+- `setFallbacks(int $id, array $fallbacks)` — POST /:id/fallbacks
+- `resetAllTraffics()` — POST /resetAllTraffics
+- `import(string $jsonData)` — POST /import
+
+#### `Endpoints\Clients` (prefix: `/panel/api/clients`)
+Full client management with bulk operations:
+- `listPaged(array $params)` — POST /list/paged — supports page, pageSize, search, filter, protocol, sort, order
+- `list()` — GET /list
+- `get(string $email)` — GET /get/:email
+- `add(array $clientData, array $inboundIds)` — POST /add — validates email
+- `update(string $email, array $data)` — POST /update/:email
+- `delete(string $email, bool $keepTraffic)` — POST /del/:email
+- `attach(string $email, array $inboundIds)` — POST /:email/attach
+- `detach(string $email, array $inboundIds)` — POST /:email/detach
+- `resetAllTraffics()` — POST /resetAllTraffics
+- `delDepleted()` — POST /delDepleted
+- `bulkAdjust(array $emails, ?int $addDays, ?int $addBytes)` — POST /bulkAdjust
+- `bulkDelete(array $emails, bool $keepTraffic)` — POST /bulkDel
+- `bulkCreate(array $entries)` — POST /bulkCreate — entries: [{client: {...}, inboundIds: [...]}, ...]
+- `bulkAttach(array $emails, array $inboundIds)` — POST /bulkAttach
+- `bulkDetach(array $emails, array $inboundIds)` — POST /bulkDetach
+- `bulkResetTraffic(array $emails)` — POST /bulkResetTraffic
+- `resetTraffic(string $email)` — POST /resetTraffic/:email
+- `updateTraffic(string $email, int $upload, int $download)` — POST /updateTraffic/:email
+- `ips(string $email)` — POST /ips/:email
+- `clearIps(string $email)` — POST /clearIps/:email
+- `onlines()` — POST /onlines
+- `lastOnline()` — POST /lastOnline
+- `traffic(string $email)` — GET /traffic/:email
+- `subLinks(string $subId)` — GET /subLinks/:subId
+- `links(string $email)` — GET /links/:email
+
+#### `Endpoints\ClientGroups` (prefix: `/panel/api/clients/groups`)
+- `list()` — GET /
+- `create(string $name)` — POST /create
+- `rename(string $oldName, string $newName)` — POST /rename
+- `delete(string $name)` — POST /delete
+- `bulkAdd(array $emails, string $group)` — POST /bulkAdd
+- `bulkRemove(array $emails)` — POST /bulkRemove
+- `emails(string $name)` — GET /:name/emails
+
+#### `Endpoints\Server` (prefix: `/panel/api/server`)
+System monitoring and Xray management:
+- `status()` — GET /status — CPU, RAM, Disk, Network, Xray state
+- `cpuHistory(string $bucket)` — GET /cpuHistory/:bucket
+- `history(string $metric, string $bucket)` — GET /history/:metric/:bucket
+- `xrayMetricsState()` — GET /xrayMetricsState
+- `xrayMetricsHistory(string $metric, string $bucket)` — GET /xrayMetricsHistory/:metric/:bucket
+- `xrayObservatory()` — GET /xrayObservatory
+- `xrayObservatoryHistory(string $tag, string $bucket)` — GET /xrayObservatoryHistory/:tag/:bucket
+- `getXrayVersion()` — GET /getXrayVersion
+- `getPanelUpdateInfo()` — GET /getPanelUpdateInfo
+- `getConfigJson()` — GET /getConfigJson
+- `getDb()` — GET /getDb
+- `getNewUUID()` — GET /getNewUUID
+- `getNewX25519Cert()` — GET /getNewX25519Cert (Reality keypair)
+- `getNewMldsa65()` — GET /getNewmldsa65
+- `getNewMlkem768()` — GET /getNewmlkem768
+- `getNewVlessEnc()` — GET /getNewVlessEnc
+- `getNewEchCert(string $sni)` — POST /getNewEchCert
+- `stopXrayService()` — POST /stopXrayService
+- `restartXrayService()` — POST /restartXrayService
+- `installXray(string $version)` — POST /installXray/:version
+- `updatePanel()` — POST /updatePanel
+- `updateGeofile(string $fileName)` — POST /updateGeofile/:fileName
+- `updateAllGeofiles()` — POST /updateGeofile
+- `logs(int $count, ?string $level, bool $syslog)` — POST /logs/:count
+- `xrayLogs(int $count)` — POST /xraylogs/:count
+- `importDb(string $filePath)` — POST /importDB (multipart)
+
+#### `Endpoints\Nodes` (prefix: `/panel/api/nodes`)
+- `list()` — GET /list
+- `get(int $id)` — GET /get/:id
+- `add(array $data)` — POST /add — requires name, scheme, address, port, basePath, apiToken
+- `update(int $id, array $data)` — POST /update/:id
+- `delete(int $id)` — POST /del/:id
+- `setEnable(int $id, bool $enable)` — POST /setEnable/:id
+- `test(array $connectionData)` — POST /test
+- `probe(int $id)` — POST /probe/:id
+- `history(int $id, string $metric, string $bucket)` — GET /history/:id/:metric/:bucket
+
+#### `Endpoints\Settings` (prefix: `/panel/setting`)
+- `all()` — POST /all
+- `defaultSettings()` — POST /defaultSettings
+- `update(array $settings)` — POST /update
+- `updateUser(string $oldUser, string $oldPass, string $newUser, string $newPass)` — POST /updateUser
+- `restartPanel()` — POST /restartPanel
+- `getDefaultJsonConfig()` — GET /getDefaultJsonConfig
+- `getApiTokens()` — GET /apiTokens
+- `createApiToken(string $name)` — POST /apiTokens/create
+- `deleteApiToken(int $id)` — POST /apiTokens/delete/:id
+- `setApiTokenEnabled(int $id, bool $enabled)` — POST /apiTokens/setEnabled/:id
+
+#### `Endpoints\XrayConfig` (prefix: `/panel/xray`)
+- `getConfig()` — POST /
+- `getDefaultJsonConfig()` — GET /getDefaultJsonConfig
+- `getOutboundsTraffic()` — GET /getOutboundsTraffic
+- `getXrayResult()` — GET /getXrayResult
+- `update(array $fields)` — POST /update
+- `warp(string $action)` — POST /warp/:action
+- `nord(string $action)` — POST /nord/:action
+- `resetOutboundsTraffic(?string $tag)` — POST /resetOutboundsTraffic
+- `testOutbound(array $config)` — POST /testOutbound
+
+#### `Endpoints\CustomGeo` (prefix: `/panel/api/custom-geo`)
+- `list()` — GET /list
+- `aliases()` — GET /aliases
+- `add(string $type, string $alias, string $url)` — POST /add
+- `update(int $id, array $data)` — POST /update/:id
+- `delete(int $id)` — POST /delete/:id
+- `download(int $id)` — POST /download/:id
+- `updateAll()` — POST /update-all
+
+#### `Endpoints\Subscriptions`
+- `getBase64(string $subId, string $path)` — GET /:path/:subId
+- `getJson(string $subId, string $path)` — GET /:path/:subId
+- `getClash(string $subId, string $path)` — GET /:path/:subId
+- `backupToTelegram()` — POST /panel/api/backuptotgbot
+
+### Exception Hierarchy
+
+- `ThreeXUIException` extends `\RuntimeException`
+  - `AuthenticationException` — 401, invalid creds/token
+  - `ApiException` — Any API error response, stores `getResponseData()`
+  - `ConnectionException` — cURL/network failures
+  - `ValidationException` — Input validation failures
+
+All exceptions carry optional `$context` array via `getContext()`.
+
+### Helper Classes
+
+#### `Helpers\Validator`
+- `requiredFields(array $data, array $fields)` — assert all present + non-empty
+- `isValidEmail(string $email): bool` / `assertEmail(string $email): void`
+- `isValidPort(mixed $port): bool` / `assertPort(mixed $port): void`
+- `isValidProtocol(string $protocol): bool` / `assertProtocol(string $protocol): void`
+- `isPositiveInt(mixed $value): bool` / `assertPositiveInt(mixed $value, string $name): void`
+- `isUuid(string $value): bool` / `assertUuid(string $value): void`
+- `nonEmptyArray(string $field, mixed $value): void`
+
+#### `Helpers\Formatter`
+- `bytesToHuman(int $bytes, int $precision): string`
+- `humanToBytes(string $value): int`
+- `timestamp(int $timestamp): string`
+- `gbToBytes(float $gb): int` / `bytesToGb(int $bytes): float`
+- `expiryTime(int $milliseconds): string`
+- `truncate(string $text, int $maxLength): string`
+- `sanitize(string $value): string`
+
+#### `Helpers\ArrayHelper`
+- `dotGet(array $arr, string $key, mixed $default): mixed`
+- `dotSet(array &$arr, string $key, mixed $value): void`
+- `dotHas(array $arr, string $key): bool`
+- `removeEmpty(array $arr): array`
+- `toQuery(array $params): string`
+- `only(array $arr, array $keys): array`
+- `except(array $arr, array $keys): array`
+
+#### `Helpers\functions.php` (Global Functions)
+- `threexui_client(string $url, ?string $token): ThreeXUI`
+- `bytes_to_human(int $bytes, int $precision): string`
+- `human_to_bytes(string $value): int`
+- `gb_to_bytes(float $gb): int`
+- `bytes_to_gb(int $bytes): float`
+- `array_dot_get(array $arr, string $key, mixed $default): mixed`
+- `validate_uuid(string $value): bool`
+- `validate_protocol(string $protocol): bool`
+- `validate_port(mixed $port): bool`
+
+### Contracts (Interfaces)
+- `HttpClientInterface` — get/post/postMultipart/setBaseUrl/setBearerToken/setCookie/setTimeout
+- `EndpointInterface` — getClient(): HttpClient
+
+---
+
+## Complete File Listing
+
+```
+threex-ui-php/
+├── composer.json
+├── README.md
+├── DOCUMENTATION.md
+├── llm.txt
+├── llm-full.txt
+├── src/
+│   ├── ThreeXUI.php
+│   ├── Config.php
+│   ├── HttpClient.php
+│   ├── Authentication.php
+│   ├── Contracts/
+│   │   ├── HttpClientInterface.php
+│   │   └── EndpointInterface.php
+│   ├── Endpoints/
+│   │   ├── Inbounds.php
+│   │   ├── Clients.php
+│   │   ├── ClientGroups.php
+│   │   ├── Server.php
+│   │   ├── Nodes.php
+│   │   ├── Settings.php
+│   │   ├── XrayConfig.php
+│   │   ├── CustomGeo.php
+│   │   └── Subscriptions.php
+│   ├── Exceptions/
+│   │   ├── ThreeXUIException.php
+│   │   ├── AuthenticationException.php
+│   │   ├── ApiException.php
+│   │   ├── ConnectionException.php
+│   │   └── ValidationException.php
+│   └── Helpers/
+│       ├── Validator.php
+│       ├── Formatter.php
+│       ├── ArrayHelper.php
+│       └── functions.php
+└── examples/
+    ├── basic-usage.php
+    ├── inbounds.php
+    └── clients.php
+```
+
+---
+
+## Usage Patterns for LLM Agents
+
+### Creating an inbound with Reality
+```php
+$panel = new \ThreeXUI\ThreeXUI('https://panel:54321');
+$panel->withApiToken('token');
+
+$keys = $panel->server()->getNewX25519Cert();
+
+$result = $panel->inbounds()->add([
+    'remark'          => 'VLESS-Reality',
+    'listen'          => '',
+    'port'            => 443,
+    'protocol'        => 'vless',
+    'enable'          => true,
+    'total'           => 0,
+    'expiryTime'      => 0,
+    'settings'        => json_encode([
+        'clients'    => [],
+        'decryption' => 'none',
+        'fallbacks'  => []
+    ]),
+    'streamSettings'  => json_encode([
+        'network'     => 'tcp',
+        'security'    => 'reality',
+        'realitySettings' => [
+            'show'         => false,
+            'xver'         => 0,
+            'dest'         => 'www.microsoft.com:443',
+            'serverNames'  => ['www.microsoft.com'],
+            'privateKey'   => $keys['obj']['privateKey'] ?? '',
+            'shortIds'     => [''],
+        ]
+    ]),
+    'sniffing'        => json_encode([
+        'enabled'      => true,
+        'destOverride' => ['http', 'tls']
+    ]),
+]);
+```
+
+### Batch client management
+```php
+// Get all depleted clients and remove them
+$panel->clients()->delDepleted();
+
+// Add days to premium users' expiry
+$premiumEmails = $panel->clientGroups()->emails('premium');
+$panel->clients()->bulkAdjust($premiumEmails['obj'] ?? [], addDays: 30);
+
+// Create bulk clients from CSV data
+$entries = array_map(function($row) {
+    return [
+        'client'     => ['email' => $row[0], 'totalGB' => (int) $row[1]],
+        'inboundIds' => [1],
+    ];
+}, $csvRows);
+$panel->clients()->bulkCreate($entries);
+```
+
+### Server monitoring
+```php
+$status = $panel->server()->status();
+// $status['obj']['cpu'] — CPU usage %
+// $status['obj']['mem']['current'] — Current memory
+// $status['obj']['disk']['current'] — Disk usage
+// $status['obj']['xray']['state'] — Xray running state
+// $status['obj']['netIO']['up'] / ['down'] — Network I/O
+
+// Get logs
+$logs = $panel->server()->logs(50, level: 'error');
+$xrayLogs = $panel->server()->xrayLogs(100);
+```

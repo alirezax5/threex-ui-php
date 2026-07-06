@@ -1,0 +1,74 @@
+# 3X-UI PHP Client — LLM Context (Compact)
+
+## Project
+- **Name:** threex-ui-php (alirezax5/threex-ui-php)
+- **Purpose:** PHP 8.1+ OOP client for 3X-UI Panel REST API
+- **License:** MIT
+- **Dependencies:** ext-curl, ext-json, ext-mbstring (no third-party packages)
+
+## Architecture
+- **Namespace:** ThreeXUI (PSR-4)
+- **Entry Point:** `ThreeXUI\ThreeXUI` — main facade class
+- Each API group is a separate endpoint class under `ThreeXUI\Endpoints\*`
+- HTTP layer: `ThreeXUI\HttpClient` (native cURL)
+- Config: `ThreeXUI\Config` (immutable via fluent setters)
+- Auth: `ThreeXUI\Authentication` (login/logout/2FA)
+- Exceptions: `ThreeXUI\Exceptions\*` (hierarchical custom exceptions)
+- Helpers: `ThreeXUI\Helpers\*` (Validator, Formatter, ArrayHelper, global functions)
+
+## Key Design Decisions
+- PHP 8.1+ (readonly, named args, enums)
+- Zero third-party dependencies — pure ext-curl
+- No HTTP factory abstraction — simpler for target audience
+- Fluent interfaces on Config/ThreeXUI for builder pattern
+- All endpoint methods return raw decoded JSON array (same as API envelope)
+- Validation on input (email, port, protocol, UUID) before HTTP calls
+- Dual auth: Bearer token OR session cookie via login()
+
+## Authentication Modes
+1. `$panel->withApiToken('token')` — Bearer header, no CSRF needed
+2. `$panel->login('user', 'pass')` — Session cookie + auto CSRF fetch
+
+## API Response Envelope
+```json
+{"success": true|false, "msg": "string", "obj": <data>}
+```
+
+## Endpoint Groups (9 total, ~96 methods)
+1. **Inbounds** — CRUD, traffic reset, fallbacks, bulk import
+2. **Clients** — CRUD, bulk ops, traffic, online status, groups
+3. **ClientGroups** — Group CRUD, bulk add/remove members
+4. **Server** — Status, Xray control, keygen, logs, DB backup
+5. **Nodes** — Multi-node cluster management
+6. **Settings** — Panel settings, user management, API tokens
+7. **XrayConfig** — Core config, Warp/NordVPN, outbound test
+8. **CustomGeo** — Custom geoip/geosite sources
+9. **Subscriptions** — Base64/JSON/Clash subs, Telegram backup
+
+## Helper Functions (global)
+- `threexui_client(url, ?token)` — factory
+- `bytes_to_human(int, precision)` — "1.5 GB"
+- `human_to_bytes(string)` — 1610612736
+- `gb_to_bytes(float)` / `bytes_to_gb(int)`
+- `array_dot_get(arr, 'a.b.c', default)`
+- `validate_uuid(str)`, `validate_protocol(str)`, `validate_port(int)`
+
+## Exception Types
+- `ThreeXUIException` (base)
+- `AuthenticationException` (401)
+- `ApiException` (4xx/5xx, has getResponseData())
+- `ConnectionException` (cURL/network)
+- `ValidationException` (input validation)
+
+## File Structure
+```
+src/
+├── ThreeXUI.php          (main facade)
+├── Config.php            (configuration)
+├── HttpClient.php        (cURL wrapper)
+├── Authentication.php    (auth handler)
+├── Contracts/            (interfaces)
+├── Endpoints/            (9 endpoint classes)
+├── Exceptions/           (5 exception classes)
+└── Helpers/              (Validator, Formatter, ArrayHelper, functions.php)
+```

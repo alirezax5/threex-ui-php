@@ -1,0 +1,70 @@
+{
+    "name": "alirezax5/threex-ui-php",
+    "description": "A modern, modular PHP client for the 3X-UI Panel API - manage Xray/V2Ray inbounds, clients, nodes, and server settings programmatically.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "3x-ui",
+        "xray",
+        "v2ray",
+        "vless",
+        "vmess",
+        "trojan",
+        "shadowsocks",
+        "panel",
+        "api",
+        "client"
+    ],
+    "authors": [
+        {
+            "name": "alirezax5"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-curl": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10",
+        "friendsofphp/php-cs-fixer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ThreeXUI\\": "src/"
+        },
+        "files": [
+            "src/Helpers/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ThreeXUI\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse src --level=max",
+        "format": "php-cs-fixer fix src",
+        "optimize": "composer dump-autoload --optimize --no-dev",
+        "optimize-all": [
+            "@optimize",
+            "php -r \"echo 'Autoloader optimized for production.\n';\""
+        ],
+        "install-production": [
+            "composer install --no-dev --optimize-autoloader --prefer-dist"
+        ],
+        "clean": [
+            "composer validate --strict"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "process-timeout": 0
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

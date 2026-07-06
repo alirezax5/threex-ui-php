@@ -1,0 +1,80 @@
+# Changelog
+
+All notable changes to the 3X-UI PHP Client are documented in this file.
+
+---
+
+## [1.0.0] — 2026-07-07
+
+### Added
+#### Core
+- Initial release of `alirezax5/threex-ui-php`
+- `ThreeXUI\ThreeXUI` main facade with fluent interface
+- `ThreeXUI\Config` — immutable-style configuration builder
+- `ThreeXUI\HttpClient` — native cURL HTTP client with JSON handling
+- `ThreeXUI\Authentication` — dual auth: Bearer token + session login
+- Cookie-based session management with auto CSRF token fetch
+
+#### Endpoints (9 groups, ~96 methods)
+- `Endpoints\Inbounds` — full CRUD, traffic reset, fallback management, bulk import
+- `Endpoints\Clients` — CRUD, bulk ops (create/delete/attach/detach/adjust/reset), traffic, IPs, online status
+- `Endpoints\ClientGroups` — group CRUD, bulk add/remove members
+- `Endpoints\Server` — status monitoring, Xray service control, key generation (UUID, X25519, ML-DSA, ML-KEM, ECH), logs, DB backup/import, geo file updates
+- `Endpoints\Nodes` — multi-node cluster CRUD, connectivity test/probe, metric history
+- `Endpoints\Settings` — panel settings, user credentials update, API token management
+- `Endpoints\XrayConfig` — config template, outbound traffic stats, Warp/NordVPN integration, outbound testing
+- `Endpoints\CustomGeo` — custom geoip/geosite source management
+- `Endpoints\Subscriptions` — Base64/JSON/Clash subscriptions, Telegram backup
+
+#### Helpers
+- `Helpers\Validator` — email, UUID, port, protocol, positive int, non-empty array validation
+- `Helpers\Formatter` — bytes⇄human, GB⇄bytes, timestamp, expiry, truncate, sanitize
+- `Helpers\ArrayHelper` — dot notation get/set/has, remove empty, only/except, to query
+- `Helpers\RetryHandler` — exponential backoff with configurable jitter
+- `Helpers\functions.php` — 9 global helper functions (threexui_client, bytes_to_human, etc.)
+
+#### Exceptions
+- `Exceptions\ThreeXUIException` — base exception with context array
+- `Exceptions\AuthenticationException` — auth failures (401)
+- `Exceptions\ApiException` — API error responses (4xx/5xx) with responseData
+- `Exceptions\ConnectionException` — network/cURL errors
+- `Exceptions\ValidationException` — input validation failures
+
+#### Retry Logic
+- Retry on: ConnectionException, HTTP 408/429/5xx
+- No retry on: AuthenticationException, 4xx client errors
+- Configurable: maxAttempts, baseDelayMs, multiplier, maxDelayMs, jitter
+- `$panel->withRetry()` fluent method on facade
+- `HttpClient::setRetryHandler()` for programmatic control
+
+#### Contracts
+- `Contracts\HttpClientInterface` — HTTP abstraction
+- `Contracts\EndpointInterface` — endpoint marker
+
+#### Testing
+- PHPUnit 10 test suite: 144 tests, 226 assertions
+- Test files: Config, Exceptions, Validator, Formatter, ArrayHelper, RetryHandler, Functions
+- Endpoint tests: Inbounds, Clients, ClientGroups, Server, Nodes, Settings, XrayConfig, CustomGeo
+- Mocked HTTP layer for endpoint testing
+
+#### Documentation
+- `README.md` — English readme with quick start and API overview
+- `README.fa.md` — Persian readme
+- `DOCUMENTATION.md` — full English API reference
+- `DOCUMENTATION.fa.md` — full Persian API reference
+- `llm.txt` — compact LLM context
+- `llm-full.txt` — comprehensive LLM context with patterns and examples
+
+#### Examples (7 files)
+- `examples/basic-usage.php` — authentication and basic API calls
+- `examples/inbounds.php` — complete inbound management
+- `examples/clients.php` — client CRUD + bulk + groups
+- `examples/server.php` — monitoring, service control, keygen, logs, backups
+- `examples/nodes.php` — multi-node cluster management
+- `examples/settings.php` — panel settings + API token management
+- `examples/xray-config.php` — Xray core config, Warp/NordVPN
+- `examples/advanced.php` — error handling, 2FA, retry, maintenance scripts
+- `examples/helpers.php` — all helper functions demonstrated
+
+---
+
