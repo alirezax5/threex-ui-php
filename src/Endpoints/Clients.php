@@ -33,7 +33,6 @@ class Clients implements EndpointInterface
 
     public function get(string $email): array
     {
-        Validator::assertEmail($email);
 
         return $this->http->get(self::BASE . "/get/{$email}");
     }
@@ -41,7 +40,6 @@ class Clients implements EndpointInterface
     public function add(array $clientData, array $inboundIds): array
     {
         Validator::requiredFields($clientData, ['email']);
-        Validator::assertEmail($clientData['email']);
 
         return $this->http->post(self::BASE . '/add', [
             'client'     => $clientData,
@@ -51,22 +49,16 @@ class Clients implements EndpointInterface
 
     public function update(string $email, array $data): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/update/{$email}", $data);
     }
 
     public function delete(string $email, bool $keepTraffic = false): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/del/{$email}?keepTraffic=" . ($keepTraffic ? 'true' : 'false'));
     }
 
     public function attach(string $email, array $inboundIds): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/{$email}/attach", [
             'inboundIds' => $inboundIds,
         ]);
@@ -74,8 +66,6 @@ class Clients implements EndpointInterface
 
     public function detach(string $email, array $inboundIds): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/{$email}/detach", [
             'inboundIds' => $inboundIds,
         ]);
@@ -144,15 +134,11 @@ class Clients implements EndpointInterface
 
     public function resetTraffic(string $email): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/resetTraffic/{$email}");
     }
 
     public function updateTraffic(string $email, int $upload, int $download): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/updateTraffic/{$email}", [
             'upload'   => $upload,
             'download' => $download,
@@ -161,15 +147,11 @@ class Clients implements EndpointInterface
 
     public function ips(string $email): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/ips/{$email}");
     }
 
     public function clearIps(string $email): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->post(self::BASE . "/clearIps/{$email}");
     }
 
@@ -185,8 +167,6 @@ class Clients implements EndpointInterface
 
     public function traffic(string $email): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->get(self::BASE . "/traffic/{$email}");
     }
 
@@ -197,8 +177,6 @@ class Clients implements EndpointInterface
 
     public function links(string $email): array
     {
-        Validator::assertEmail($email);
-
         return $this->http->get(self::BASE . "/links/{$email}");
     }
 }

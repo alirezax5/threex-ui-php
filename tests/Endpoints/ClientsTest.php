@@ -30,13 +30,6 @@ class ClientsTest extends EndpointTestCase
         $this->assertSame($expected, $result);
     }
 
-    public function test_get_by_email_validates(): void
-    {
-        $this->expectException(ValidationException::class);
-
-        $this->clients->get('invalid-email');
-    }
-
     public function test_get_by_email(): void
     {
         $expected = ['success' => true, 'msg' => '', 'obj' => ['email' => 'user@test.com']];
@@ -48,13 +41,6 @@ class ClientsTest extends EndpointTestCase
         $result = $this->clients->get('user@test.com');
 
         $this->assertSame($expected, $result);
-    }
-
-    public function test_add_validates_email(): void
-    {
-        $this->expectException(ValidationException::class);
-
-        $this->clients->add(['email' => 'bad'], []);
     }
 
     public function test_add_client(): void
